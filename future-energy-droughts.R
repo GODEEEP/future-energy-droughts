@@ -1,0 +1,222 @@
+# Identify future energy droughts
+# Cameron Bracken, April 2024
+# cameron.bracken@pnnl.gov
+
+library(tidyverse)
+
+source("lib.R")
+
+timezone <- "US/Pacific"
+
+drought_path <- "data/droughts/"
+
+periods <- c(
+  "hourly" = 1,
+  "daily" = 24
+)
+# periods = c('1_1-hour'=1)
+lower_thresh <- c(
+  "hourly" = 0.1,
+  "daily" = 0.1
+)
+upper_thresh <- 1 - lower_thresh
+
+for (i in 1:length(periods)) {
+  #
+  period <- periodi <- periods[i]
+  period_name <- names(periods)[i]
+  lt <- lower_thresh[i]
+  ut <- upper_thresh[i]
+  message("\n", period_name)
+
+  period_fns <- list.files("data/ba-aggregated", sprintf("*_%s.csv", period_name), full.names = TRUE) # %>%
+  # grep("2045|2050", ., value = T)
+  for (fn in period_fns) {
+    #
+    message("\t", fn)
+
+    message("\t\tReading data")
+    data_type <- ifelse(str_detect(fn, "ba_future"), "future",
+      ifelse(str_detect(fn, "ba_hist"), "hist", "expected_future")
+    )
+    start_year <- ifelse(data_type == "hist", 1981, 2025)
+
+    ba_gen_all <- read_csv(fn, show = FALSE, progress = FALSE) %>%
+      mutate(
+        datetime_local = with_tz(datetime_utc, "US/Pacific"),
+        year = year(datetime_local),
+        month = month(datetime_local),
+        day = day(datetime_local),
+        jday = yday(datetime_local),
+        hour = hour(datetime_local),
+        week = week(datetime_local),
+        # load_mwh = load_cf * max_load,
+        residual_load_mwh = load_mwh - solar_gen_mwh - wind_gen_mwh
+      ) |>
+      # something is wrong with the 1980 data
+      filter(year >= start_year) %>%
+      {
+        # hack for the expected future case, some BAs only appear in later
+        # infrastructure years so remove them
+        if (data_type == "expected_future") {
+          group_by(., ba) |>
+            mutate(first_year = min(year)) |>
+            filter(first_year == start_year) |>
+            select(-first_year) |>
+            ungroup()
+        } else {
+          .
+        }
+      } |>
+      # normalize the laod data each year to account for increasing load signal
+      group_by(ba, year) |>
+      mutate(
+        load_norm = (residual_load_mwh - mean(residual_load_mwh)) / sd(residual_load_mwh),
+        load_max_norm = (load_max_mwh - mean(load_mwh)) / sd(load_mwh)
+      ) |>
+      group_by(ba, week, hour) |>
+      # group_by(ba, hour) |>
+      mutate(
+        zero_prob = length(which(solar_gen_mwh == 0)) / length(solar_gen_mwh),
+        # solar_s = sdei(solar_gen_mwh),
+        # wind_s = sdei(wind_gen_mwh),
+        # load_s = sdei(load_norm),
+        # solar_q = ecdf(solar_gen_mwh)(solar_gen_mwh),
+        # wind_q = ecdf(wind_gen_mwh)(wind_gen_mwh),
+        # load_q = ecdf(load_norm)(load_norm),
+        # solar = ecdf(solar_gen_mwh)(solar_gen_mwh),
+        # wind = ecdf(wind_gen_mwh)(wind_gen_mwh),
+        # load = ecdf(load_norm)(load_norm),
+        # residual_load = ecdf(residual_load_mwh)(residual_load_mwh),
+        # solar_q10 = quantile(solar_gen_mwh, lt),
+        # wind_q10 = quantile(wind_gen_mwh, lt),
+        # load_q90 = quantile(load_norm, ut),
+        # residual_load_q90 = quantile(residual_load_mwh, ut)
+      ) |>
+      group_by(ba, hour) |>
+      mutate(
+        # standardized values
+        solar_s = sdei(solar_gen_mwh),
+        wind_s = sdei(wind_gen_mwh),
+        load_s = sdei(load_norm),
+        # quantiles
+        solar_q10 = quantile(solar_gen_mwh, lt),
+        wind_q10 = quantile(wind_gen_mwh, lt),
+        load_q90 = quantile(load_norm, ut),
+        residual_load_q90 = quantile(residual_load_mwh, ut)
+      ) |>
+      ungroup()
+
+    n_years <- ba_gen_all$year |>
+      unique() |>
+      length()
+
+
+    ####################################
+    ####################################
+    ####################################
+    # Droughts
+    ####################################
+    ####################################
+    ####################################
+    # message("Droughts")
+
+    message("\t\tEnergy droughts")
+    for (bai in unique(ba_gen_all$ba)) {
+      #
+      message("\t\t\t", bai)
+
+      ba_gen <- ba_gen_all |> filter(ba == bai)
+      # wind and solar
+      # -1.28 corresponds to 10th percentile
+      ws_droughts_all <- ba_gen |> energy_drought(wind_s < -1.28 & solar_s < -1.28)
+      # droughts_all = ba_gen |> energy_drought(wind_gen_mwh < wind_q10 & solar_gen_mwh <= solar_q10)
+      # droughts_all = ba_gen |> energy_drought(wind < lt & solar <= lt)
+      ws_droughts <- energy_drought_filter(ws_droughts_all)
+
+
+      # wind
+      # -1.28 corresponds to 10th percentile
+      # wind_droughts_all = ba_gen |> energy_drought(wind_gen_mwh < wind_q10)
+      wind_droughts_all <- ba_gen |> energy_drought(wind_s < -1.28)
+      wind_droughts <- energy_drought_filter(wind_droughts_all)
+
+      # solar
+      # -1.28 corresponds to 10th percentile
+      # solar_droughts_all = ba_gen |> energy_drought(solar_gen_mwh < solar_q10)
+      solar_droughts_all <- ba_gen |> energy_drought(solar_s < -1.28)
+      solar_droughts <- energy_drought_filter(solar_droughts_all)
+
+      # residual load
+      # 1.28 corresponds to 90th percentile
+      # rl_droughts_all = ba_gen |> energy_drought(residual_load_mwh > residual_load_q90)
+      rl_droughts_all <- ba_gen |> energy_drought(load_s > 1.28)
+      rl_droughts <- energy_drought_filter(rl_droughts_all)
+
+      # wind and solar and load
+      lws_droughts_all <- ba_gen |> energy_drought(wind_s < -1.28 & solar_s < -1.28 & load_s > 1.28)
+      lws_droughts <- energy_drought_filter(lws_droughts_all)
+
+
+      # dont allow single hour droughts
+      if (period_name == "hourly") {
+        ws_droughts <- ws_droughts |> filter(run_length > 1)
+        wind_droughts <- wind_droughts |> filter(run_length > 1)
+        solar_droughts <- solar_droughts |> filter(run_length > 1)
+        rl_droughts <- rl_droughts |> filter(run_length > 1)
+        lws_droughts <- lws_droughts |> filter(run_length > 1)
+      }
+
+      file_suffix <- fn |>
+        basename() |>
+        tools::file_path_sans_ext()
+
+      # write_csv converts the local time to UTC when it writes out
+      write_ba_drought <- function(x, drought_type, period_name, file_suffix, bai) {
+        if (nrow(x) > 1) {
+          x |>
+            rename(datetime_utc = datetime_local) |>
+            write_csv(sprintf(
+              "%s/%s_droughts_%s_%s.csv", drought_path, drought_type, file_suffix, bai
+            ), progress = F)
+        }
+      }
+      ws_droughts |> write_ba_drought("ws", period_name, file_suffix, bai)
+      wind_droughts |> write_ba_drought("wind", period_name, file_suffix, bai)
+      solar_droughts |> write_ba_drought("solar", period_name, file_suffix, bai)
+      rl_droughts |> write_ba_drought("rl", period_name, file_suffix, bai)
+      lws_droughts |> write_ba_drought("lws", period_name, file_suffix, bai)
+      #
+      # lws_droughts |>
+      #   rename(datetime_utc = datetime_local) |>
+      #   write_csv(sprintf("%s/lws_droughts_%s_%s_%s.csv", drought_path, period_name, file_suffix, bai))
+    }
+    # stop()
+
+    # read the BA files and combine
+    read_combine_ba_droughts <- function(drought_type, file_suffix) {
+      combo_fn <- sprintf("%s/%s_droughts_%s.csv", drought_path, drought_type, file_suffix)
+      ba_fns <- drought_path |>
+        list.files(sprintf("^%s_droughts_%s_*", drought_type, file_suffix), full.names = TRUE) %>%
+        grep(combo_fn, ., value = TRUE, invert = TRUE)
+      ba_fns |>
+        map(function(x) {
+          read_csv(x, show = F, progress = F)
+        }) |>
+        bind_rows() |>
+        write_csv(combo_fn, progress = F)
+      unlink(ba_fns)
+    }
+    read_combine_ba_droughts("ws", file_suffix)
+    read_combine_ba_droughts("wind", file_suffix)
+    read_combine_ba_droughts("solar", file_suffix)
+    read_combine_ba_droughts("rl", file_suffix)
+    read_combine_ba_droughts("lws", file_suffix)
+
+    # rm(ba_gen_all)
+    # rm(list = ls() %>% grep("_all", ., value = T))
+    # rm(list = ls() %>% grep("_droughts", ., value = T))
+    # gc()
+    # sapply(ls(), function(x) format(object.size(get(x)), unit='Mb')) %>% sort
+  }
+}
