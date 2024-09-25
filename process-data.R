@@ -8,29 +8,32 @@ import::from(fields, rdist.earth)
 
 source("lib.R")
 
-data_dir <- "/Volumes/data/future-wind-solar/"
+future_data_dir <- "/Volumes/data/future-wind-solar/"
+historical_data_dir <- "/Volumes/data/tgw-gen-historical/"
 
-solar_config_eia <- "/Volumes/data/tgw-gen-historical/solar/eia_solar_configs.csv" |>
+solar_config_eia <- "%s/solar/eia_solar_configs.csv" |>
+  sprintf(historical_data_dir) |>
   read_csv(show = F, prog = F)
-wind_config_eia <- "/Volumes/data/tgw-gen-historical/wind/eia_wind_configs.csv" |>
+wind_config_eia <- "%s/wind/eia_wind_configs.csv" |>
+  sprintf(historical_data_dir) |>
   read_csv(show = F, prog = F)
 solar_config_bau <- "%s/cerf-config/solar_config_business_as_usual_ira_ccs_climate_2050.csv" |>
-  sprintf(data_dir) |>
+  sprintf(future_data_dir) |>
   read_csv(show = F, prog = F) |>
   mutate(ba = map_cerf_to_ba_by_nearest_plant(lon, lat, solar_config_eia)) # %>%
 # mutate(infra_year = infra_year(.))
 wind_config_bau <- "%s/cerf-config/wind_config_business_as_usual_ira_ccs_climate_2050.csv" |>
-  sprintf(data_dir) |>
+  sprintf(future_data_dir) |>
   read_csv(show = F, prog = F) |>
   mutate(ba = map_cerf_to_ba_by_nearest_plant(lon, lat, wind_config_eia)) # %>%
 # mutate(infra_year = infra_year(.))
 solar_config_nz <- "%s/cerf-config/solar_config_net_zero_ira_ccs_climate_2050.csv" |>
-  sprintf(data_dir) |>
+  sprintf(future_data_dir) |>
   read_csv(show = F, prog = F) |>
   mutate(ba = map_cerf_to_ba_by_nearest_plant(lon, lat, solar_config_eia)) # %>%
 # mutate(infra_year = infra_year(.))
 wind_config_nz <- "%s/cerf-config/wind_config_net_zero_ira_ccs_climate_2050.csv" |>
-  sprintf(data_dir) |>
+  sprintf(future_data_dir) |>
   read_csv(show = F, prog = F) |>
   mutate(ba = map_cerf_to_ba_by_nearest_plant(lon, lat, wind_config_eia)) # %>%
 # mutate(infra_year = infra_year(.))
@@ -50,7 +53,7 @@ for (infra_year in seq(2020, 2050, by = 5)) {
     message("\t\t", scenario)
 
     1980:2019 |>
-      map(read_year_and_agg_to_ba, scenario, infra_year, data_dir, .progress = TRUE) |>
+      map(read_year_and_agg_to_ba, scenario, infra_year, future_data_dir, .progress = TRUE) |>
       bind_rows() |>
       write_csv(sprintf("data/ba-aggregated/ba_hist_%s_%s_hourly.csv", infra_year, scenario))
   }
@@ -66,7 +69,7 @@ for (infra_year in seq(2020, 2050, by = 5)) {
     message("\t\t", scenario)
 
     2020:2059 |>
-      map(read_year_and_agg_to_ba, scenario, infra_year, data_dir, .progress = TRUE) |>
+      map(read_year_and_agg_to_ba, scenario, infra_year, future_data_dir, .progress = TRUE) |>
       bind_rows() |>
       write_csv(sprintf("data/ba-aggregated/ba_future_%s_%s_hourly.csv", infra_year, scenario))
   }
@@ -79,12 +82,12 @@ for (scenario in c("nz", "bau")) {
   message("\t", scenario)
 
   x <- bind_rows(
-    map(2020:2024, read_year_and_agg_to_ba, scenario, 2020, data_dir, .progress = TRUE) |> bind_rows(),
-    map(2025:2029, read_year_and_agg_to_ba, scenario, 2025, data_dir, .progress = TRUE) |> bind_rows(),
-    map(2030:2034, read_year_and_agg_to_ba, scenario, 2030, data_dir, .progress = TRUE) |> bind_rows(),
-    map(2035:2039, read_year_and_agg_to_ba, scenario, 2035, data_dir, .progress = TRUE) |> bind_rows(),
-    map(2040:2044, read_year_and_agg_to_ba, scenario, 2040, data_dir, .progress = TRUE) |> bind_rows(),
-    map(2045:2049, read_year_and_agg_to_ba, scenario, 2045, data_dir, .progress = TRUE) |> bind_rows()
+    map(2020:2024, read_year_and_agg_to_ba, scenario, 2020, future_data_dir, .progress = TRUE) |> bind_rows(),
+    map(2025:2029, read_year_and_agg_to_ba, scenario, 2025, future_data_dir, .progress = TRUE) |> bind_rows(),
+    map(2030:2034, read_year_and_agg_to_ba, scenario, 2030, future_data_dir, .progress = TRUE) |> bind_rows(),
+    map(2035:2039, read_year_and_agg_to_ba, scenario, 2035, future_data_dir, .progress = TRUE) |> bind_rows(),
+    map(2040:2044, read_year_and_agg_to_ba, scenario, 2040, future_data_dir, .progress = TRUE) |> bind_rows(),
+    map(2045:2049, read_year_and_agg_to_ba, scenario, 2045, future_data_dir, .progress = TRUE) |> bind_rows()
   )
   # some BAs dont start in 2025, so remove those
   # ba_starting_2025 <- x |>
