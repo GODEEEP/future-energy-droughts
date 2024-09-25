@@ -14,6 +14,7 @@ source("lib.R")
 timezone <- "US/Pacific"
 
 drought_path <- "data/droughts/"
+dir.create(drought_path, showWarnings = TRUE)
 
 periods <- c(
   "daily" = 24

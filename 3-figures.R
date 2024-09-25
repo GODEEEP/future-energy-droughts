@@ -20,6 +20,8 @@ decarb_scenarios <- c("bau", "nz")
 infra_years <- seq(2020, 2050, by = 5)
 weather_years <- c("ba_future", "ba_hist")
 
+dir.create("plots", showWarnings = F)
+
 seasons <- c("Winter", "Spring", "Summer", "Fall")
 
 states_sf <- st_read("/Volumes/data/shapefiles/cb_2018_us_state_5m/cb_2018_us_state_5m.shp") |>

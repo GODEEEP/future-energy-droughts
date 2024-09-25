@@ -42,6 +42,9 @@ start_year_hist <- 1980
 start_year_future <- 2020
 # convert everything in the WECC to the same timezone for conveneince
 timezone <- "US/Pacific"
+ba_agg_dir <- "data/ba-aggregated"
+
+dir.create(ba_agg_dir, showWarnings = FALSE)
 
 # Infrastructure experiments - future infrastructure run through historical climate
 message("Historical")
@@ -55,7 +58,7 @@ for (infra_year in seq(2020, 2050, by = 5)) {
     1980:2019 |>
       map(read_year_and_agg_to_ba, scenario, infra_year, future_data_dir, .progress = TRUE) |>
       bind_rows() |>
-      write_csv(sprintf("data/ba-aggregated/ba_hist_%s_%s_hourly.csv", infra_year, scenario))
+      write_csv(sprintf("%s/ba_hist_%s_%s_hourly.csv", infra_year, scenario))
   }
 }
 
@@ -71,7 +74,7 @@ for (infra_year in seq(2020, 2050, by = 5)) {
     2020:2059 |>
       map(read_year_and_agg_to_ba, scenario, infra_year, future_data_dir, .progress = TRUE) |>
       bind_rows() |>
-      write_csv(sprintf("data/ba-aggregated/ba_future_%s_%s_hourly.csv", infra_year, scenario))
+      write_csv(sprintf("%s/ba_future_%s_%s_hourly.csv", ba_agg_dir, infra_year, scenario))
   }
 }
 
@@ -97,7 +100,7 @@ for (scenario in c("nz", "bau")) {
   #   pull(ba)
   x |>
     # filter(ba %in% ba_starting_2025) |>
-    write_csv(sprintf("data/ba-aggregated/ba_expected_future_%s_hourly.csv", scenario))
+    write_csv(sprintf("%s/ba_expected_future_%s_hourly.csv", ba_agg_dir, scenario))
 }
 
 
@@ -110,12 +113,12 @@ for (type in c("hist", "future", "expected_future")) {
       if (type == "expected_future") {
         #
         if (infra_year == 2025) {
-          csv_fn <- sprintf("data/ba-aggregated/ba_%s_%s_hourly.csv", type, scenario)
+          csv_fn <- sprintf("%s/ba_%s_%s_hourly.csv", ba_agg_dir, type, scenario)
         } else {
           next
         }
       } else {
-        csv_fn <- sprintf("data/ba-aggregated/ba_%s_%s_%s_hourly.csv", type, infra_year, scenario)
+        csv_fn <- sprintf("%s/ba_%s_%s_%s_hourly.csv", ba_agg_dir, type, infra_year, scenario)
       }
 
       message(csv_fn)
