@@ -57,9 +57,7 @@ for (fn in period_fns) {
       day = day(datetime_local),
       jday = yday(datetime_local),
       hour = hour(datetime_local),
-      week = week(datetime_local),
-      # load_mwh = load_cf * max_load,
-      residual_load_mwh = load_mwh - solar_gen_mwh - wind_gen_mwh
+      week = week(datetime_local)
     ) |>
     # something is wrong with the 1980 data
     filter(year >= start_year) %>%
@@ -76,23 +74,15 @@ for (fn in period_fns) {
         .
       }
     } |>
-    # normalize the laod data each year to account for increasing load signal
     group_by(ba, year) |>
-    mutate(
-      load_norm = (residual_load_mwh - mean(residual_load_mwh)) / sd(residual_load_mwh),
-      load_max_norm = (load_max_mwh - mean(load_mwh)) / sd(load_mwh)
-    ) |>
     group_by(ba) |>
     mutate(
       # standardized values
       solar_s = sdei(solar_gen_mwh),
       wind_s = sdei(wind_gen_mwh),
-      load_s = sdei(load_norm),
       # quantiles
       solar_q10 = quantile(solar_gen_mwh, lt),
       wind_q10 = quantile(wind_gen_mwh, lt),
-      load_q90 = quantile(load_norm, ut),
-      residual_load_q90 = quantile(residual_load_mwh, ut),
       zero_prob = 0
     ) |>
     ungroup() #|>
@@ -139,26 +129,12 @@ for (fn in period_fns) {
     # solar_droughts_all <- ba_gen |> energy_drought(solar_gen_mwh < solar_q10)
     solar_droughts <- energy_drought_filter(solar_droughts_all)
 
-    # residual load
-    # 1.28 corresponds to 90th percentile
-    rl_droughts_all <- ba_gen |> energy_drought(load_s > 1.28)
-    # rl_droughts_all <- ba_gen |> energy_drought(residual_load_mwh > residual_load_q90)
-    rl_droughts <- energy_drought_filter(rl_droughts_all)
-
-    # wind and solar and load
-    lws_droughts_all <- ba_gen |> energy_drought(wind_gen_mwh < -1.28 & solar_gen_mwh < -1.28 & load_s > 1.28)
-    # lws_droughts_all <- ba_gen |> energy_drought(wind_gen_mwh < wind_q10 &
-    #   solar_gen_mwh < solar_q10 & load_s > load_q90)
-    lws_droughts <- energy_drought_filter(lws_droughts_all)
-
 
     # dont allow single hour droughts
     if (period_name == "hourly") {
       ws_droughts <- ws_droughts |> filter(run_length > 1)
       wind_droughts <- wind_droughts |> filter(run_length > 1)
       solar_droughts <- solar_droughts |> filter(run_length > 1)
-      rl_droughts <- rl_droughts |> filter(run_length > 1)
-      lws_droughts <- lws_droughts |> filter(run_length > 1)
     }
 
     file_suffix <- fn |>
@@ -178,14 +154,7 @@ for (fn in period_fns) {
     ws_droughts |> write_ba_drought("ws", period_name, file_suffix, bai)
     wind_droughts |> write_ba_drought("wind", period_name, file_suffix, bai)
     solar_droughts |> write_ba_drought("solar", period_name, file_suffix, bai)
-    # rl_droughts |> write_ba_drought("rl", period_name, file_suffix, bai)
-    # lws_droughts |> write_ba_drought("lws", period_name, file_suffix, bai)
-    #
-    # lws_droughts |>
-    #   rename(datetime_utc = datetime_local) |>
-    #   write_csv(sprintf("%s/lws_droughts_%s_%s_%s.csv", drought_path, period_name, file_suffix, bai))
   }
-  # stop()
 
   # read the BA files and combine
   read_combine_ba_droughts <- function(drought_type, file_suffix) {
@@ -201,15 +170,8 @@ for (fn in period_fns) {
       write_csv(combo_fn, progress = F)
     unlink(ba_fns)
   }
+
   read_combine_ba_droughts("ws", file_suffix)
   read_combine_ba_droughts("wind", file_suffix)
   read_combine_ba_droughts("solar", file_suffix)
-  # read_combine_ba_droughts("rl", file_suffix)
-  # read_combine_ba_droughts("lws", file_suffix)
-
-  # rm(ba_gen_all)
-  # rm(list = ls() %>% grep("_all", ., value = T))
-  # rm(list = ls() %>% grep("_droughts", ., value = T))
-  # gc()
-  # sapply(ls(), function(x) format(object.size(get(x)), unit='Mb')) %>% sort
 }

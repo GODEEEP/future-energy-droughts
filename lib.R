@@ -176,21 +176,6 @@ read_year_csv <- function(year, dir, pattern, ...) {
   data
 }
 
-read_load_year <- function(year) {
-  read_year_csv(year, c("data/tell/historic", "data/tell/rcp85hotter_ssp3"), "TELL_Bal*", recursive = TRUE) |>
-    rename(
-      datetime_utc = Time_UTC,
-      ba = BA_Code,
-      load_mwh = Scaled_TELL_BA_Load_MWh
-    ) |>
-    group_by(ba) |>
-    mutate(
-      max_load = max(load_mwh),
-      load_cf = load_mwh / max_load
-    ) |>
-    select(datetime_utc, ba, load_cf, max_load)
-}
-
 read_wind_solar_year <- function(year, dir, pattern) {
   # browser()
   read_year_csv(year, dir, pattern) |>
@@ -352,24 +337,16 @@ read_year_and_agg_to_ba <- function(year, scenario, iteration, data_dir) {
     ) |>
     mutate(solar_cf = solar_gen_mw / solar_capacity)
 
-  # read load data
-  load_ba <- read_load_year(year) |>
-    mutate(
-      load_max_mwh = max_load,
-      load_mwh = load_cf * max_load
-    )
-
-  # merge wind, solar and load
-  solar_wind_load <-
+  # merge wind and solar
+  solar_wind <-
     solar_ba |>
     inner_join(wind_ba, by = c("datetime_utc", "ba")) |>
-    inner_join(load_ba, by = c("datetime_utc", "ba")) |>
     mutate(
       scenario = scenario,
       infra_year = iteration
     )
 
-  return(solar_wind_load)
+  return(solar_wind)
 }
 
 energy_drought <- function(gen, criteria) {
@@ -385,8 +362,6 @@ energy_drought <- function(gen, criteria) {
       run_length_days = run_length * periodi / 24,
       duration_days = run_length_days,
       severity_mwh = ((solar_q10 - solar_gen_mwh) + (wind_q10 - wind_gen_mwh)),
-      severity_load = load_norm - load_q90,
-      severity_load_mwh = residual_load_mwh - residual_load_q90
       # standardize
       # severity = (severity_mwh)/sd(severity_mwh),
     )
@@ -404,13 +379,8 @@ energy_drought_filter <- function(ed) {
       run_length_days = run_length_days[1],
       # standardized severity metric
       severity_ws = (mean(abs(solar_s[solar_s > -5])) + mean(abs(wind_s))) / 2,
-      severity_lws = (mean(abs(solar_s[solar_s > -5])) + mean(abs(wind_s)) + mean(abs(load_s))) / 3,
       # add the severity or mw for each timestep over the drought
       severity_mwh = sum(severity_mwh),
-      severity_load_mwh = sum(severity_load_mwh),
-      severity_load = sum(severity_load),
-      load_mwh = sum(load_mwh),
-      residual_load_mwh = sum(residual_load_mwh),
       wind_gen_mwh = sum(wind_gen_mwh),
       solar_gen_mwh = sum(solar_gen_mwh),
       zero_prob = mean(zero_prob),
@@ -422,7 +392,6 @@ energy_drought_filter <- function(ed) {
       solar_cf = mean(solar_cf),
       solar_s = mean(solar_s),
       wind_s = mean(wind_s),
-      load_s = mean(load_s),
       .groups = "drop"
     ) |>
     # filter single timestep events that only occur at night

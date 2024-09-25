@@ -139,8 +139,6 @@ for (type in c("hist", "future", "expected_future")) {
           solar_capacity_mwh = sum(solar_capacity),
           wind_gen_mwh = sum(wind_gen_mw),
           wind_capacity_mwh = sum(wind_capacity),
-          load_mwh = sum(load_cf * max_load),
-          load_max_mwh = sum(max_load),
           n_wind_plants = n_wind_plants[1],
           n_solar_plants = n_solar_plants[1],
           # rename for the output since write_csv automatically
@@ -152,7 +150,6 @@ for (type in c("hist", "future", "expected_future")) {
         mutate(
           wind_cf = wind_gen_mwh / wind_capacity_mwh,
           solar_cf = solar_gen_mwh / solar_capacity_mwh,
-          load_cf = load_mwh / load_max_mwh
         ) -> daily
       write_csv(daily, gsub("hourly", "daily", csv_fn))
     }
