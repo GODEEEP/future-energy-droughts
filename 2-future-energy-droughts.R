@@ -3,6 +3,7 @@
 # cameron.bracken@pnnl.gov
 
 library(tidyverse)
+library(arrow)
 options(
   readr.show_progress = FALSE,
   readr.show_col_types = FALSE,
@@ -31,14 +32,14 @@ period_name <- names(periods)[i]
 lt <- lower_thresh[i]
 ut <- upper_thresh[i]
 
-hist_q10 <- read_csv("data/ba-aggregated/ba_hist_2020_bau_daily.csv") |>
+hist_q10 <- read_parquet("data/ba-aggregated/ba_hist_2020_bau_daily.parquet") |>
   group_by(ba) |>
   summarise(
     solar_q10 = quantile(solar_gen_mwh, lt),
     wind_q10 = quantile(wind_gen_mwh, lt)
   )
 
-period_fns <- list.files("data/ba-aggregated", sprintf("*_%s.csv", period_name), full.names = TRUE)
+period_fns <- list.files("data/ba-aggregated", sprintf("*_%s.parquet", period_name), full.names = TRUE)
 
 for (fn in period_fns) {
   #
@@ -50,7 +51,7 @@ for (fn in period_fns) {
   )
   start_year <- ifelse(data_type == "hist", 1981, 2025)
 
-  ba_gen_all <- read_csv(fn) %>%
+  ba_gen_all <- read_parquet(fn) %>%
     mutate(
       datetime_local = with_tz(datetime_utc, "US/Pacific"),
       year = year(datetime_local),
@@ -142,14 +143,16 @@ for (fn in period_fns) {
       basename() |>
       tools::file_path_sans_ext()
 
-    # write_csv converts the local time to UTC when it writes out
+    # convert local back to UTC explicitly so the on-disk timestamps match
+    # the stage 1 ba-aggregated schema (parquet preserves tz metadata)
     write_ba_drought <- function(x, drought_type, period_name, file_suffix, bai) {
       if (nrow(x) > 1) {
         x |>
-          rename(datetime_utc = datetime_local) |>
-          write_csv(sprintf(
-            "%s/%s_droughts_%s_%s.csv", drought_path, drought_type, file_suffix, bai
-          ), progress = F)
+          mutate(datetime_utc = with_tz(datetime_local, "UTC")) |>
+          select(-datetime_local) |>
+          write_parquet(sprintf(
+            "%s/%s_droughts_%s_%s.parquet", drought_path, drought_type, file_suffix, bai
+          ))
       }
     }
     ws_droughts |> write_ba_drought("ws", period_name, file_suffix, bai)
@@ -159,16 +162,16 @@ for (fn in period_fns) {
 
   # read the BA files and combine
   read_combine_ba_droughts <- function(drought_type, file_suffix) {
-    combo_fn <- sprintf("%s/%s_droughts_%s.csv", drought_path, drought_type, file_suffix)
+    combo_fn <- sprintf("%s/%s_droughts_%s.parquet", drought_path, drought_type, file_suffix)
     ba_fns <- drought_path |>
       list.files(sprintf("^%s_droughts_%s_*", drought_type, file_suffix), full.names = TRUE) %>%
       grep(combo_fn, ., value = TRUE, invert = TRUE)
     ba_fns |>
       map(function(x) {
-        read_csv(x, show = F, progress = F)
+        read_parquet(x)
       }) |>
       bind_rows() |>
-      write_csv(combo_fn, progress = F)
+      write_parquet(combo_fn)
     unlink(ba_fns)
   }
 

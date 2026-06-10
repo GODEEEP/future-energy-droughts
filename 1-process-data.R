@@ -4,6 +4,7 @@
 
 library(tidyverse)
 library(sf)
+library(arrow)
 import::from(fields, rdist.earth)
 
 source("lib.R")
@@ -58,7 +59,7 @@ for (infra_year in seq(2020, 2050, by = 5)) {
     1980:2019 |>
       map(read_year_and_agg_to_ba, scenario, infra_year, future_data_dir, .progress = TRUE) |>
       bind_rows() |>
-      write_csv(sprintf("%s/ba_hist_%s_%s_hourly.csv", infra_year, scenario))
+      write_parquet(sprintf("%s/ba_hist_%s_%s_hourly.parquet", infra_year, scenario))
   }
 }
 
@@ -74,7 +75,7 @@ for (infra_year in seq(2020, 2050, by = 5)) {
     2020:2059 |>
       map(read_year_and_agg_to_ba, scenario, infra_year, future_data_dir, .progress = TRUE) |>
       bind_rows() |>
-      write_csv(sprintf("%s/ba_future_%s_%s_hourly.csv", ba_agg_dir, infra_year, scenario))
+      write_parquet(sprintf("%s/ba_future_%s_%s_hourly.parquet", ba_agg_dir, infra_year, scenario))
   }
 }
 
@@ -100,7 +101,7 @@ for (scenario in c("nz", "bau")) {
   #   pull(ba)
   x |>
     # filter(ba %in% ba_starting_2025) |>
-    write_csv(sprintf("%s/ba_expected_future_%s_hourly.csv", ba_agg_dir, scenario))
+    write_parquet(sprintf("%s/ba_expected_future_%s_hourly.parquet", ba_agg_dir, scenario))
 }
 
 
@@ -113,18 +114,18 @@ for (type in c("hist", "future", "expected_future")) {
       if (type == "expected_future") {
         #
         if (infra_year == 2025) {
-          csv_fn <- sprintf("%s/ba_%s_%s_hourly.csv", ba_agg_dir, type, scenario)
+          hourly_fn <- sprintf("%s/ba_%s_%s_hourly.parquet", ba_agg_dir, type, scenario)
         } else {
           next
         }
       } else {
-        csv_fn <- sprintf("%s/ba_%s_%s_%s_hourly.csv", ba_agg_dir, type, infra_year, scenario)
+        hourly_fn <- sprintf("%s/ba_%s_%s_%s_hourly.parquet", ba_agg_dir, type, infra_year, scenario)
       }
 
-      message(csv_fn)
+      message(hourly_fn)
       start_year <- ifelse(type == "hist", start_year_hist, start_year_future)
 
-      read_csv(csv_fn, show = F) |>
+      read_parquet(hourly_fn) |>
         group_by(ba) |>
         # make everything in the west pacific time, this roughtly captures the day night cycle
         mutate(
@@ -147,9 +148,9 @@ for (type in c("hist", "future", "expected_future")) {
           wind_capacity_mwh = sum(wind_capacity),
           n_wind_plants = n_wind_plants[1],
           n_solar_plants = n_solar_plants[1],
-          # rename for the output since write_csv automatically
-          # converts to utc
-          datetime_utc = datetime_local[1],
+          # rename to datetime_utc so the on-disk schema matches stage 2's
+          # expectation; convert explicitly since parquet preserves tz metadata
+          datetime_utc = with_tz(datetime_local[1], "UTC"),
           # timezone = timezone[1],
           .groups = "drop"
         ) |>
@@ -157,7 +158,7 @@ for (type in c("hist", "future", "expected_future")) {
           wind_cf = wind_gen_mwh / wind_capacity_mwh,
           solar_cf = solar_gen_mwh / solar_capacity_mwh,
         ) -> daily
-      write_csv(daily, gsub("hourly", "daily", csv_fn))
+      write_parquet(daily, gsub("hourly", "daily", hourly_fn))
     }
   }
 }

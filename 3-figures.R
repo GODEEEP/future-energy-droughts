@@ -4,6 +4,7 @@
 
 library(tidyverse)
 library(sf)
+library(arrow)
 import::from(ggthemes, scale_color_colorblind, colorblind_pal)
 import::from(ggfx, with_shadow)
 import::from(igraph, make_undirected_graph, gorder, largest_component)
@@ -118,11 +119,11 @@ for (drought_type in plot_drought_type) {
         for (weather_year in weather_years) {
           #
           fn <- paste(drought_type, weather_year, infra_year, decarb_scenario, time_scale, sep = "_") %>%
-            paste0("data/droughts/", ., ".csv")
+            paste0("data/droughts/", ., ".parquet")
           message(fn)
 
           drought_list[[fn]] <- fn |>
-            read_csv(progress = F, show = F) |>
+            read_parquet() |>
             mutate(
               drought_type = drought_type,
               time_scale = time_scale,

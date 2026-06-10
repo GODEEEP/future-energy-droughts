@@ -3,6 +3,7 @@
 # cameron.bracken@pnnl.gov
 
 library(tidyverse)
+library(arrow)
 library(xtable)
 
 options(
@@ -49,7 +50,7 @@ lt <- lower_thresh[i]
 ut <- upper_thresh[i]
 message("\n", period_name)
 
-period_fns <- list.files("data/ba-aggregated", sprintf("*_%s.csv", period_name), full.names = TRUE) # %>%
+period_fns <- list.files("data/ba-aggregated", sprintf("*_%s.parquet", period_name), full.names = TRUE) # %>%
 period_fns <- period_fns[c(3, 4, 9, 10, 15, 16)]
 infra_years <- period_fns |>
   strsplit("_") |>
@@ -73,7 +74,7 @@ for (j in 1:length(period_fns)) {
   )
   start_year <- ifelse(data_type == "hist", 1981, 2025)
 
-  ba_gen_all <- read_csv(fn, show = FALSE, progress = FALSE) %>%
+  ba_gen_all <- read_parquet(fn) %>%
     mutate(
       datetime_local = with_tz(datetime_utc, "US/Pacific"),
       year = year(datetime_local),

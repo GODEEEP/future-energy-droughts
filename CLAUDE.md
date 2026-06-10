@@ -33,7 +33,7 @@ Important quirk in `lib.R::read_year_and_agg_to_ba`: GCAM retires all EIA plants
 - `/Volumes/data/tgw-gen-historical/` — historical baseline plant CSVs and `eia_{wind,solar}_configs.csv`.
 - `/Volumes/data/future-wind-solar/` — CERF futures (`baseline-historical/`, `baseline-future/`, `cerf-historical-2050/`, `cerf-future-2050/`) plus `cerf-config/{wind,solar}_config_{business_as_usual,net_zero}_ira_ccs_climate_2050.csv`.
 - `/Volumes/data/shapefiles/cb_2018_us_state_5m/` — used for figure basemaps.
-- `data/` — repo-local working data: `ba-aggregated/`, `droughts/`, `cerf/`, `tell/`, BA service-territory CSV, BA centroids, county shapefiles for CERF→BA mapping, and `connectivity_*.rda` cached graph objects for spatial drought connectivity figures.
+- `data/` — repo-local working data: `ba-aggregated/` (parquet), `droughts/` (parquet), `cerf/`, `tell/`, BA service-territory CSV, BA centroids, county shapefiles for CERF→BA mapping, and `connectivity_*.rda` cached graph objects for spatial drought connectivity figures. `ba-aggregated/` and `droughts/` use `arrow::read_parquet`/`write_parquet` (zstd compressed); other CSVs in `data/` remain CSV. The one-shot `convert-data-to-parquet.R` script migrated the original CSV outputs.
 - `plots/` is a symlink — figures land in the Overleaf project.
 
 If `/Volumes/data/` is not mounted, the processing scripts will fail; figures can still run from cached `data/droughts/` and `data/connectivity_*.rda`.
