@@ -21,7 +21,9 @@ decarb_scenarios <- c("bau", "nz")
 infra_years <- seq(2020, 2050, by = 5)
 weather_years <- c("ba_future", "ba_hist")
 
-dir.create("plots", showWarnings = F)
+figures_dir <- "paper/figures"
+fig_path <- function(name) file.path(figures_dir, name)
+dir.create(figures_dir, showWarnings = F, recursive = T)
 
 seasons <- c("Winter", "Spring", "Summer", "Fall")
 
@@ -216,7 +218,7 @@ p_severity_bubble <- drought_stats |>
   labs(size = "Normalized Energy\nDrought Severity", fill = "Normalized Energy\nDrought Severity")
 # guides(size = guide_legend(reverse = TRUE))
 p_severity_bubble
-ggsave("plots/severity_bubble_map_nz_%s.pdf" |> sprintf(plot_drought_type), p_severity_bubble, width = 10, height = 6)
+ggsave(fig_path("severity_bubble_map_nz_%s.pdf" |> sprintf(plot_drought_type)), p_severity_bubble, width = 10, height = 6)
 
 ########################################################################
 # Difference in severity between historical and future periods
@@ -271,7 +273,7 @@ p_sev_infra_diff_nz <- severity_infra |>
   filter(decarb_scenario == "nz") |>
   plot_severity_diff()
 p_sev_infra_diff_nz
-ggsave("plots/severity_diff_infra_nz_%s.pdf" |> sprintf(plot_drought_type),
+ggsave(fig_path("severity_diff_infra_nz_%s.pdf" |> sprintf(plot_drought_type)),
   p_sev_infra_diff_nz,
   width = 10, height = 4, dpi = 600
 )
@@ -280,7 +282,7 @@ p_sev_diff_nz <- severity |>
   filter(decarb_scenario == "nz") |>
   plot_severity_diff()
 p_sev_diff_nz
-ggsave("plots/severity_diff_hist_future_nz_%s.pdf" |> sprintf(plot_drought_type),
+ggsave(fig_path("4-severity_diff_hist_future_nz_%s.pdf" |> sprintf(plot_drought_type)),
   p_sev_diff_nz,
   width = 10, height = 4, dpi = 600
 )
@@ -289,7 +291,7 @@ p_sev_diff_bau <- severity |>
   filter(decarb_scenario == "bau") |>
   plot_severity_diff()
 p_sev_diff_bau
-ggsave("plots/severity_diff_hist_future_bau_%s.pdf" |> sprintf(plot_drought_type),
+ggsave(fig_path("severity_diff_hist_future_bau_%s.pdf" |> sprintf(plot_drought_type)),
   p_sev_diff_bau,
   width = 10, height = 4, dpi = 600
 )
@@ -331,7 +333,7 @@ p_variability_bubble <- severity |>
     legend.box = "horizontal"
   )
 p_variability_bubble
-ggsave("plots/severity_diff_variability_bubble_map_nz_%s.pdf" |> sprintf(plot_drought_type),
+ggsave(fig_path("severity_diff_variability_bubble_map_nz_%s.pdf" |> sprintf(plot_drought_type)),
   p_variability_bubble,
   width = 10, height = 6
 )
@@ -380,7 +382,7 @@ p_seas_sev_diff_nz <- seasonal_severity |>
   filter(decarb_scenario == "nz") |>
   plot_seasonal_severity_diff()
 p_seas_sev_diff_nz
-ggsave("plots/severity_seasonal_diff_hist_future_nz_%s.pdf" |> sprintf(plot_drought_type),
+ggsave(fig_path("severity_seasonal_diff_hist_future_nz_%s.pdf" |> sprintf(plot_drought_type)),
   p_seas_sev_diff_nz,
   width = 16, height = 7, dpi = 600
 )
@@ -389,7 +391,7 @@ p_seas_sev_diff_bau <- seasonal_severity |>
   filter(decarb_scenario == "bau") |>
   plot_seasonal_severity_diff()
 p_seas_sev_diff_bau
-ggsave("plots/severity_seasonal_diff_hist_future_bau_%s.pdf" |> sprintf(plot_drought_type),
+ggsave(fig_path("severity_seasonal_diff_hist_future_bau_%s.pdf" |> sprintf(plot_drought_type)),
   p_seas_sev_diff_bau,
   width = 16, height = 7, dpi = 600
 )
@@ -422,7 +424,7 @@ p_sev_hist_nz <- droughts |>
   filter(decarb_scenario == "nz") |>
   plot_severity_by_ba("ba_hist") #+ scale_y_continuous(limits=c(0,200))
 p_sev_hist_nz
-ggsave("plots/severity_hist_nz_%s.pdf" |> sprintf(plot_drought_type),
+ggsave(fig_path("severity_hist_nz_%s.pdf" |> sprintf(plot_drought_type)),
   p_sev_hist_nz,
   width = 10, height = 4
 )
@@ -431,7 +433,7 @@ p_sev_future_nz <- droughts |>
   filter(decarb_scenario == "nz") |>
   plot_severity_by_ba("ba_future")
 p_sev_future_nz
-ggsave("plots/severity_future_nz_%s.pdf" |> sprintf(plot_drought_type),
+ggsave(fig_path("3-severity_future_nz_%s.pdf" |> sprintf(plot_drought_type)),
   p_sev_future_nz,
   width = 10, height = 4
 )
@@ -440,7 +442,7 @@ p_sev_hist_bau <- droughts |>
   filter(decarb_scenario == "bau") |>
   plot_severity_by_ba("ba_hist") #+ scale_y_continuous(limits=c(0,200))
 p_sev_hist_bau
-ggsave("plots/severity_hist_bau_%s.pdf" |> sprintf(plot_drought_type),
+ggsave(fig_path("severity_hist_bau_%s.pdf" |> sprintf(plot_drought_type)),
   p_sev_hist_bau,
   width = 10, height = 4
 )
@@ -449,7 +451,7 @@ p_sev_future_bau <- droughts |>
   filter(decarb_scenario == "bau") |>
   plot_severity_by_ba("ba_future")
 p_sev_future_bau
-ggsave("plots/severity_future_bau_%s.pdf" |> sprintf(plot_drought_type),
+ggsave(fig_path("severity_future_bau_%s.pdf" |> sprintf(plot_drought_type)),
   p_sev_future_bau,
   width = 10, height = 4
 )
@@ -601,7 +603,7 @@ p_dur_diff_nz <- duration |>
   filter(decarb_scenario == "nz") |>
   plot_duration_diff()
 p_dur_diff_nz
-ggsave("plots/duration_diff_hist_future_nz_%s.pdf" |> sprintf(plot_drought_type),
+ggsave(fig_path("duration_diff_hist_future_nz_%s.pdf" |> sprintf(plot_drought_type)),
   p_dur_diff_nz,
   width = 10, height = 4, dpi = 600
 )
@@ -610,7 +612,7 @@ p_dur_diff_bau <- duration |>
   filter(decarb_scenario == "bau") |>
   plot_duration_diff()
 p_dur_diff_bau
-ggsave("plots/duration_diff_hist_future_bau_%s.pdf" |> sprintf(plot_drought_type),
+ggsave(fig_path("duration_diff_hist_future_bau_%s.pdf" |> sprintf(plot_drought_type)),
   p_dur_diff_bau,
   width = 10, height = 4, dpi = 600
 )
@@ -665,7 +667,7 @@ p_dur_hist_nz <- droughts |>
   filter(decarb_scenario == "nz") |>
   plot_duration_by_ba_bars("ba_hist")
 p_dur_hist_nz
-ggsave("plots/duration_hist_nz_%s.pdf" |> sprintf(plot_drought_type),
+ggsave(fig_path("duration_hist_nz_%s.pdf" |> sprintf(plot_drought_type)),
   p_dur_hist_nz,
   width = 10, height = 4
 )
@@ -674,7 +676,7 @@ p_dur_future_nz <- droughts |>
   filter(decarb_scenario == "nz") |>
   plot_duration_by_ba_bars("ba_future")
 p_dur_future_nz
-ggsave("plots/duration_future_nz_%s.pdf" |> sprintf(plot_drought_type),
+ggsave(fig_path("5-duration_future_nz_%s.pdf" |> sprintf(plot_drought_type)),
   p_dur_future_nz,
   width = 10, height = 4
 )
@@ -683,7 +685,7 @@ p_dur_hist_bau <- droughts |>
   filter(decarb_scenario == "bau") |>
   plot_duration_by_ba_bars("ba_hist")
 p_dur_hist_bau
-ggsave("plots/duration_hist_bau_%s.pdf" |> sprintf(plot_drought_type),
+ggsave(fig_path("duration_hist_bau_%s.pdf" |> sprintf(plot_drought_type)),
   p_dur_hist_bau,
   width = 10, height = 4
 )
@@ -692,7 +694,7 @@ p_dur_future_bau <- droughts |>
   filter(decarb_scenario == "bau") |>
   plot_duration_by_ba_bars("ba_future")
 p_dur_future_bau
-ggsave("plots/duration_future_bau_%s.pdf" |> sprintf(plot_drought_type),
+ggsave(fig_path("duration_future_bau_%s.pdf" |> sprintf(plot_drought_type)),
   p_dur_future_bau,
   width = 10, height = 4
 )
@@ -898,7 +900,8 @@ for (scenario in c("bau", "nz")) {
       # strip.background =element_rect(fill="white")
     )
   p_connected_event_diff
-  ggsave("plots/connected_event_diff_%s_%s.pdf" |> sprintf(scenario, plot_drought_type),
+  connected_event_prefix <- ifelse(scenario == "nz", "7-", "")
+  ggsave(fig_path("%sconnected_event_diff_%s_%s.pdf" |> sprintf(connected_event_prefix, scenario, plot_drought_type)),
     p_connected_event_diff,
     width = 10, height = 5
   )
@@ -984,7 +987,7 @@ for (scenario in c("bau", "nz")) {
     # guides(linewidth = guide_legend(reverse = TRUE)) +
     labs(x = "", y = "", linewidth = "# of Events\nIn Common", color = "# of Events\nIn Common")
   p_ba_connect
-  ggsave("plots/spatial_connectivity_%s_%s.pdf" |> sprintf(scenario, plot_drought_type),
+  ggsave(fig_path("spatial_connectivity_%s_%s.pdf" |> sprintf(scenario, plot_drought_type)),
     p_ba_connect,
     width = 10, height = 5
   )
@@ -1048,7 +1051,8 @@ for (scenario in c("bau", "nz")) {
     guides(color = guide_legend(nrow = 1, byrow = TRUE)) +
     labs(x = "", y = "")
   p_ba_connect_season
-  ggsave("plots/spatial_connectivity_seasonal_%s_%s.pdf" |> sprintf(scenario, plot_drought_type),
+  spatial_seasonal_prefix <- ifelse(scenario == "nz", "6-", "")
+  ggsave(fig_path("%sspatial_connectivity_seasonal_%s_%s.pdf" |> sprintf(spatial_seasonal_prefix, scenario, plot_drought_type)),
     p_ba_connect_season,
     width = 8, height = 8
   )
@@ -1099,7 +1103,7 @@ p_ba_map <-
   theme(legend.position = "None") +
   labs(x = "", y = "")
 p_ba_map
-ggsave("plots/map_ba.pdf", p_ba_map, width = 5, height = 4.5, dpi = 600)
+ggsave(fig_path("map_ba.pdf"), p_ba_map, width = 5, height = 4.5, dpi = 600)
 
 p_map_ba_panels <-
   ggplot(ba_sf) +
@@ -1125,4 +1129,4 @@ p_map_ba_panels <-
     legend.position = "none"
   )
 p_map_ba_panels
-ggsave("plots/map_ba_panels.pdf", p_map_ba_panels, width = 9, height = 5, dpi = 600)
+ggsave(fig_path("2-map_ba_panels.pdf"), p_map_ba_panels, width = 9, height = 5, dpi = 600)
